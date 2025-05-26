@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DOI Redirector</title>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      font-size: 16px;
+    }
+    p {
+      font-size: 14px;
+    }
+    #toggle-btn {
+      margin: 10px 0;
+      padding: 5px 10px;
+      font-size: 14px;
+    }
+    #debug {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #555;
+      background: #f4f4f4;
+      padding: 5px;
+      border-radius: 4px;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h1>DOI to Sci-Hub Redirector</h1>
+  <p>This extension automatically redirects DOI URLs to sci-hub.se/[DOI URL].</p>
+  <p>
+    For example: <br>
+    <code>https://doi.org/10.1000/xyz123</code> will redirect to<br>
+    <code>https://sci-hub.se/https://doi.org/10.1000/xyz123</code>
+  </p>
+  <button id="toggle-btn">Loading...</button>
+  <div id="debug">Debug info will appear here.</div>
+  <script src="popup.js"></script>
+</body>
+</html>
