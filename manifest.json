@@ -1,13 +1,16 @@
 {
   "manifest_version": 2,
-  "name": "DOI to Example Redirector",
+  "name": "Article Fetcher",
   "version": "1.0",
-  "description": "Redirects DOI URLs to example.com plus the DOI path",
+  "description": "Automatically fetches articles from DOIs and provides the PDF of the article",
   "permissions": [
+    "downloads",
     "webRequest",
     "webRequestBlocking",
     "<all_urls>",
     "storage",
+    "tabs",
+    "notifications",
     "contextMenus"
   ],
   "background": {
@@ -18,7 +21,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "doi-redirector@example.com"
+      "id": "GotNone@Nowhere.com"
     }
   }
 }

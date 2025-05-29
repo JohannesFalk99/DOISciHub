@@ -1,46 +1,140 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="utf-8" />
   <title>DOI Redirector</title>
-  <meta charset="utf-8">
   <style>
-    body {
-      width: 300px;
-      padding: 10px;
-      font-family: Arial, sans-serif;
-    }
-    h1 {
-      font-size: 16px;
-    }
-    p {
-      font-size: 14px;
-    }
-    #toggle-btn {
-      margin: 10px 0;
-      padding: 5px 10px;
-      font-size: 14px;
-    }
-    #debug {
-      margin-top: 10px;
-      font-size: 12px;
-      color: #555;
-      background: #f4f4f4;
-      padding: 5px;
-      border-radius: 4px;
-      word-break: break-all;
-    }
+  :root {
+  --bg-color: #1e1e2f;
+  --text-color: #f0f0f0;
+  --accent-color: #4fc3f7;
+  --input-bg: #2c2c3c;
+  --border-color: #444;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Segoe UI', sans-serif;
+  width: 320px;
+  padding: 16px;
+  margin: 0;
+}
+
+h1 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+p {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 6px 0;
+}
+
+code {
+  background: #333;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ccc;
+}
+
+button {
+  background-color: var(--accent-color);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 12px 0;
+  width: 100%;
+}
+
+button:hover {
+  background-color: #29b6f6;
+}
+
+#options-container {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+ 
+}
+
+#pdf-option {
+  flex: 0 0 auto; /* shrink to content */
+  margin: 0;
+}
+
+#pdf-option label {
+  margin: 0;
+  white-space: nowrap;        /* Prevent label from breaking into multiple lines */
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+#pdf-option input[type="checkbox"] {
+  margin-right: 6px;
+}
+
+#subdir-option {
+  flex: 1;
+  margin: 0;
+}
+
+#subdir-option label {
+  margin: 12px;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+input[type="text"] {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 6px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+#debug {
+  margin: 12px 2px;
+  font-size: 12px;
+  background: #2a2a3a;
+  padding: 6px;
+  border-radius: 4px;
+  color: #ccc;
+  word-break: break-word;
+}
   </style>
 </head>
 <body>
   <h1>DOI to Sci-Hub Redirector</h1>
-  <p>This extension automatically redirects DOI URLs to sci-hub.se/[DOI URL].</p>
-  <p>
-    For example: <br>
-    <code>https://doi.org/10.1000/xyz123</code> will redirect to<br>
-    <code>https://sci-hub.se/https://doi.org/10.1000/xyz123</code>
-  </p>
+  <p>This extension automatically redirects DOI links to Sci-Hub:</p>
+
   <button id="toggle-btn">Loading...</button>
+
+  <div id="options-container">
+    <div id="pdf-option">
+      <label><input type="checkbox" id="pdf-checkbox"> Download Articles </label>
+    </div>
+
+    <div id="subdir-option">
+      <label>
+        Download directory:
+        <input type="text" id="subdir-input" placeholder="SciHubDownloads" />
+      </label>
+    </div>
+  </div>
+
   <div id="debug">Debug info will appear here.</div>
+
   <script src="popup.js"></script>
 </body>
 </html>

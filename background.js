@@ -1,81 +1,86 @@
-// DOI Redirector Background Script
-// Listens for requests to any URL and redirects to sci-hub.se if a DOI is detected and enabled
-
-const CONTEXT_MENU_ID = "toggle-enabled";
-
-// Always recreate the context menu to avoid duplicates or missing menu
-async function refreshContextMenu() {
-  const { enabled } = await browser.storage.local.get('enabled');
-  await browser.contextMenus.removeAll();
-  await browser.contextMenus.create({
-    id: CONTEXT_MENU_ID,
-    title: "Enable Extension",
-    type: "checkbox",
-    checked: enabled !== false,
-    contexts: ["browser_action"]
-  });
-  console.log("[refreshContextMenu] Context menu created, checked:", enabled !== false);
+async function getSettings() {
+  const defaults = {
+    enabled: true,
+    downloadPdf: false,
+    downloadSubdir: "SciHubDownloads",
+  };
+  return Object.assign(defaults, await browser.storage.local.get(Object.keys(defaults)));
 }
 
-// On install or startup, ensure context menu matches storage
-browser.runtime.onInstalled.addListener(refreshContextMenu);
-browser.runtime.onStartup.addListener(refreshContextMenu);
+function isSciHubUrl(url) {
+  return /sci-hub\.[^\/]+/i.test(url);
+}
 
-// Handle context menu toggle
-browser.contextMenus.onClicked.addListener((info) => {
-  if (info.menuItemId === CONTEXT_MENU_ID) {
-    console.log("[contextMenus.onClicked] Set enabled to:", info.checked);
-    browser.storage.local.set({ enabled: info.checked });
-  }
-});
+function extractIdentifier(url) {
+  const decoded = decodeURIComponent(url);
+  const doiRegex = /10\.\d{4,9}\/[\-._;()/:A-Z0-9]+/i;
+  const sdRegex = /^https?:\/\/www\.sciencedirect\.com\/science\/article\/abs\/pii\/[A-Z0-9]+$/i;
+  const acsRegex = /^https:\/\/pubs\.acs\.org\/doi\/(abs|pdf|full)\/10\.\d{4,9}\/[\w.+-]+$/i;
 
-// Listen for storage changes and update context menu checkbox
-browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.enabled) {
-    console.log("[storage.onChanged] enabled changed to:", changes.enabled.newValue);
-    refreshContextMenu();
+  if (sdRegex.test(decoded) || acsRegex.test(decoded)) return decoded;
+
+  const match = decoded.match(doiRegex);
+  return match ? match[0] : null;
+}
+
+function sciHubHasArticle(html) {
+  return !html.includes("doesn't have the requested document") && !html.includes('<p id = "smile">:(</p>');
+}
+
+function extractPdfUrl(html) {
+  const embed = new DOMParser().parseFromString(html, "text/html").querySelector("#article embed");
+  if (!embed) return null;
+
+  let src = embed.getAttribute("src") || "";
+  if (src.startsWith("//")) src = "https:" + src;
+  else if (src.startsWith("/")) src = "https://sci-hub.se" + src;
+
+  return /^https?:\/\//i.test(src) ? src : null;
+}
+
+async function onBeforeRequestHandler(details) {
+  const { enabled, downloadPdf, downloadSubdir } = await getSettings();
+  if (!enabled || isSciHubUrl(details.url)) return {};
+
+  const identifier = extractIdentifier(details.url);
+  if (!identifier) return {};
+
+  try {
+    const sciHubUrl = `https://sci-hub.se/${identifier}`;
+    const html = await (await fetch(sciHubUrl)).text();
+    if (!sciHubHasArticle(html)) {
+      browser.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon48.png",
+        title: "Sci-hub redirector - No Article Found",
+        message: "Article detected, but not available on Sci-Hub. It may be open access."
+      });
+      return {};
+    }
+
+    const pdfUrl = extractPdfUrl(html);
+    if (!pdfUrl) return { redirectUrl: sciHubUrl };
+
+    if (downloadPdf) {
+      const doiPart = identifier.match(/10\.\d{4,9}\/[\-._;()/:A-Z0-9]+/i);
+      const filename = (doiPart ? doiPart[0] : "article").replace(/\//g, "_") + ".pdf";
+
+      browser.downloads.download({
+        url: pdfUrl,
+        filename: `${(downloadSubdir || "SciHubDownloads").trim()}/${filename}`,
+        saveAs: false,
+      });
+    }
+
+    return { redirectUrl: pdfUrl };
+  } catch (e) {
+    console.error("Sci-Hub request failed:", e);
+    return {};
   }
-});
+}
 
 browser.webRequest.onBeforeRequest.addListener(
-  async function(details) {
-    const { enabled } = await browser.storage.local.get('enabled');
-    console.log("[onBeforeRequest] enabled is:", enabled);
-    if (enabled === false) {
-      console.log("[onBeforeRequest] Redirector is disabled, skipping.");
-      return {};
-    }
-
-    const originalUrl = details.url;
-
-    // Skip requests to Sci-Hub domains
-    if (/:\/\/(?:[^\/]+\.)?sci-hub\.[^\/]+/i.test(originalUrl)) {
-      console.log(`[onBeforeRequest] Skipping Sci-Hub URL: ${originalUrl}`);
-      return {};
-    }
-
-    // Decode the URL to normalize encoded characters
-    const decodedUrl = decodeURIComponent(originalUrl);
-
-    // Robust DOI matcher (Crossref-compliant)
-    const doiRegex = /10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i;
-    const doiMatch = decodedUrl.match(doiRegex);
-
-    if (doiMatch) {
-      const doi = doiMatch[0];
-      const newUrl = "https://sci-hub.se/" + doi;
-      console.log(`[onBeforeRequest] Redirecting ${originalUrl} to ${newUrl}`);
-      return { redirectUrl: newUrl };
-    } else {
-      console.log(`[onBeforeRequest] No valid DOI found in URL: ${originalUrl}`);
-      return {};
-    }
-  },
-  {
-    urls: ["<all_urls>"],
-    types: ["main_frame"]
-  },
+  onBeforeRequestHandler,
+  { urls: ["<all_urls>"], types: ["main_frame"] },
   ["blocking"]
 );
-
-console.log("DOI Redirector extension initialized");
