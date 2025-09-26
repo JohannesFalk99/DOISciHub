@@ -24,30 +24,44 @@ function extractIdentifier(url) {
 }
 
 function sciHubHasArticle(html) {
-  return !html.includes("doesn't have the requested document") && !html.includes('<p id = "smile">:(</p>');
+  return !html.includes("doesn't have the requested document") && 
+         !html.includes('<p id = "smile">:(</p>');
 }
 
 function extractPdfUrl(html) {
-  const embed = new DOMParser().parseFromString(html, "text/html").querySelector("#article embed");
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const embed = doc.querySelector("#article embed");
+  
   if (!embed) return null;
 
   let src = embed.getAttribute("src") || "";
-  if (src.startsWith("//")) src = "https:" + src;
-  else if (src.startsWith("/")) src = "https://sci-hub.se" + src;
+  if (src.startsWith("//")) {
+    src = "https:" + src;
+  } else if (src.startsWith("/")) {
+    src = "https://sci-hub.se" + src;
+  }
 
   return /^https?:\/\//i.test(src) ? src : null;
 }
 
 async function onBeforeRequestHandler(details) {
   const { enabled, downloadPdf, downloadSubdir } = await getSettings();
-  if (!enabled || isSciHubUrl(details.url)) return {};
+  
+  if (!enabled || isSciHubUrl(details.url)) {
+    return {};
+  }
 
   const identifier = extractIdentifier(details.url);
-  if (!identifier) return {};
+  if (!identifier) {
+    return {};
+  }
 
   try {
     const sciHubUrl = `https://sci-hub.se/${identifier}`;
-    const html = await (await fetch(sciHubUrl)).text();
+    const response = await fetch(sciHubUrl);
+    const html = await response.text();
+    
     if (!sciHubHasArticle(html)) {
       browser.notifications.create({
         type: "basic",
@@ -59,22 +73,25 @@ async function onBeforeRequestHandler(details) {
     }
 
     const pdfUrl = extractPdfUrl(html);
-    if (!pdfUrl) return { redirectUrl: sciHubUrl };
+    if (!pdfUrl) {
+      return { redirectUrl: sciHubUrl };
+    }
 
     if (downloadPdf) {
       const doiPart = identifier.match(/10\.\d{4,9}\/[\-._;()/:A-Z0-9]+/i);
       const filename = (doiPart ? doiPart[0] : "article").replace(/\//g, "_") + ".pdf";
+      const downloadDir = (downloadSubdir || "SciHubDownloads").trim();
 
       browser.downloads.download({
         url: pdfUrl,
-        filename: `${(downloadSubdir || "SciHubDownloads").trim()}/${filename}`,
+        filename: `${downloadDir}/${filename}`,
         saveAs: false,
       });
     }
 
     return { redirectUrl: pdfUrl };
-  } catch (e) {
-    console.error("Sci-Hub request failed:", e);
+  } catch (error) {
+    console.error("Sci-Hub request failed:", error);
     return {};
   }
 }

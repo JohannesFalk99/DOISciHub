@@ -15,9 +15,6 @@ async function updateUI() {
 
   pdfCheckbox.checked = !!downloadPdf;
   subdirInput.value = (typeof downloadSubdir === "string" && downloadSubdir.trim()) ? downloadSubdir : "SciHubDownloads";
-
-  console.log("[popup] Current enabled state:", enabled);
-  console.log("[popup] Current downloadPdf state:", downloadPdf);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -29,21 +26,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   toggleBtn.onclick = async () => {
     const { enabled } = await browser.storage.local.get('enabled');
-    const newState = !(enabled !== false); // default true if undefined
+    const newState = enabled !== true; // Toggle the current state
     await browser.storage.local.set({ enabled: newState });
-    console.log("[popup] Set enabled to:", newState);
     await updateUI();
   };
 
   pdfCheckbox.onchange = async (event) => {
     const newState = event.target.checked;
     await browser.storage.local.set({ downloadPdf: newState });
-    console.log("[popup] Set downloadPdf to:", newState);
   };
 
   subdirInput.onchange = async (event) => {
     const newSubdir = event.target.value.trim();
     await browser.storage.local.set({ downloadSubdir: newSubdir });
-    console.log("[popup] Set downloadSubdir to:", newSubdir);
   };
 });
